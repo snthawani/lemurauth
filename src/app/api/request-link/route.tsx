@@ -6,6 +6,7 @@ import { dbConnect } from '../../../lib/mongo';
 import { User } from '../../../models/User';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+console.log('eee')
 const twilioClient = twilio(process.env.TWILIO_SID!, process.env.TWILIO_AUTH_TOKEN!);
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
 
     const token = crypto.randomUUID();
     try {
+      console.log("test")
       await dbConnect();
       let query = method === 'email' ? { email: value } : { phone: value };
       const existingUser = await User.findOne(query);
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
     const link = `${process.env.BASE_URL}/auth/verify?id=${userForId._id}&token=${token}`;
     console.log(link) // for testing purposes
     if (method === 'email') {
+      console.log('sending email')
       const msg = {
         to: value,
         from: process.env.SENDGRID_VERIFIED_SENDER!,
@@ -62,6 +65,7 @@ export async function POST(req: NextRequest) {
         html: `<p>Click to login: <a href="${link}">${link}</a></p>`,
       };
       await sgMail.send(msg);
+      console.log('sent email')
     } else if (method === 'phone') {
       await twilioClient.messages.create({
         body: `Your passwordless login link: ${link}`,
@@ -74,6 +78,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: `Login link sent to ${value}` });
   } catch (err) {
+    console.log(err)
+    console.log('this errro')
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
