@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     try {
       console.log("test")
       await dbConnect();
-      let query = method === 'email' ? { email: value } : { phone: value };
+      const query = method === 'email' ? { email: value } : { phone: value };
       const existingUser = await User.findOne(query);
       if (existingUser) {
         existingUser.token = token;

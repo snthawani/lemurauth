@@ -36,7 +36,7 @@ export default function ClientHome({ isAuthenticated }: { isAuthenticated: boole
 
         {isAuthenticated ? (
           <>
-            <p>🎉 You're logged in!</p>
+            <p>You are logged in!</p>
             <button onClick={handleLogout}>Log Out</button>
           </>
         ) : method === '' ? (

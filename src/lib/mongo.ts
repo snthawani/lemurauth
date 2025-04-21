@@ -12,7 +12,7 @@ type MongooseCache = {
 };
 
 declare global {
-  var mongoose: MongooseCache | undefined;
+  let mongoose: MongooseCache | undefined;
 }
 
 const globalWithMongoose = global as typeof globalThis & { mongoose: MongooseCache };
