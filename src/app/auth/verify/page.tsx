@@ -35,6 +35,8 @@ export default function VerifyPage() {
         }
       } catch (err) {
         console.log(err)
+        console.log(error)
+        console.log(message)
         setError('An error occurred while verifying the user.');
         setMessage('');
       }
@@ -50,7 +52,7 @@ export default function VerifyPage() {
       <div className="verify-box">
         <h1 className="verify-title">Verify User</h1>
         
-        <p className="redirect-message">Redirecting to "app" (home page)...</p>
+        <p className="redirect-message">Redirecting to app</p>
       </div>
     </div>
   );
