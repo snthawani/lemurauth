@@ -5,6 +5,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
+    /*
     const body = await req.json();
     const { email } = body;
 
@@ -24,8 +25,8 @@ export async function POST(req: NextRequest) {
 
     await sgMail.send(msg);
     console.log('✅ Email sent to', email);
-
-    return NextResponse.json({ message: `Login link sent to ${email}` });
+*/
+    return NextResponse.json({ message: `Login link sent` });
   } catch (err) {
     console.error('❌ Failed to send email:', err);
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
