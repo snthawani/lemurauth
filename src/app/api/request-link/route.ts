@@ -6,13 +6,10 @@ import { dbConnect } from '../../../lib/mongo';
 import { User } from '../../../models/User';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
-console.log('eee')
 const twilioClient = twilio(process.env.TWILIO_SID!, process.env.TWILIO_AUTH_TOKEN!);
 
 export async function POST(req: NextRequest) {
   try {
-    let userForId;
-
     const body = await req.json();
     const { method, value } = body;
 
@@ -21,66 +18,57 @@ export async function POST(req: NextRequest) {
     }
 
     const token = crypto.randomUUID();
-    try {
-      console.log("test")
-      await dbConnect();
-      const query = method === 'email' ? { email: value } : { phone: value };
-      const existingUser = await User.findOne(query);
-      if (existingUser) {
-        existingUser.token = token;
-        await existingUser.save();
-      } else {
-        let email = '';
-        let phone = '';
-        if (method === 'email') {
-          email = value;
-        } else {
-          phone = value;
-        }
-        const newUser = new User({
-          email,
-          phone,
-          token,
-        });
+    const query = method === 'email' ? { email: value } : { phone: value };
 
-        await newUser.save();
-      }
+    await dbConnect();
 
-      userForId = await User.findOne(query) || null;
-
-    } catch (error) {
-      console.error(error);
-      return NextResponse.json({ message: 'Error creating user', error });
-    }
-
-    const link = `${process.env.BASE_URL}/auth/verify?id=${userForId._id}&token=${token}`;
-    console.log(link) // for testing purposes
-    if (method === 'email') {
-      console.log('sending email')
-      const msg = {
-        to: value,
-        from: process.env.SENDGRID_VERIFIED_SENDER!,
-        subject: 'Your Passwordless Login Link',
-        text: `Login here: ${link}`,
-        html: `<p>Click to login: <a href="${link}">${link}</a></p>`,
-      };
-      await sgMail.send(msg);
-      console.log('sent email')
-    } else if (method === 'phone') {
-      await twilioClient.messages.create({
-        body: `Your passwordless login link: ${link}`,
-        from: process.env.TWILIO_PHONE_NUMBER!,
-        to: value,
-      });
+    let user = await User.findOne(query);
+    if (user) {
+      user.token = token;
+      await user.save();
     } else {
-      return NextResponse.json({ error: 'Invalid method' }, { status: 400 });
+      user = new User({
+        email: method === 'email' ? value : '',
+        phone: method === 'phone' ? value : '',
+        token,
+      });
+      await user.save();
     }
 
-    return NextResponse.json({ message: `Login link sent to ${value}` });
+    const link = `${process.env.BASE_URL}/auth/verify?id=${user._id}&token=${token}`;
+
+    // ✅ Respond to client early
+    const response = NextResponse.json({ message: `Login link is being sent to ${value}` });
+
+    // 🧵 Send email/SMS in the background
+    setTimeout(async () => {
+      try {
+        if (method === 'email') {
+          const msg = {
+            to: value,
+            from: process.env.SENDGRID_VERIFIED_SENDER!,
+            subject: 'Your Passwordless Login Link',
+            text: `Login here: ${link}`,
+            html: `<p>Click to login: <a href="${link}">${link}</a></p>`,
+          };
+          await sgMail.send(msg);
+          console.log('✅ Email sent');
+        } else if (method === 'phone') {
+          await twilioClient.messages.create({
+            body: `Your passwordless login link: ${link}`,
+            from: process.env.TWILIO_PHONE_NUMBER!,
+            to: value,
+          });
+          console.log('✅ SMS sent');
+        }
+      } catch (sendError) {
+        console.error('❌ Failed to send message:', sendError);
+      }
+    }, 0);
+
+    return response;
   } catch (err) {
-    console.log(err)
-    console.log('this errro')
+    console.error('❌ Unexpected error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-
