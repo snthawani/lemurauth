@@ -37,36 +37,35 @@ export async function POST(req: NextRequest) {
 
     const link = `${process.env.BASE_URL}/auth/verify?id=${user._id}&token=${token}`;
 
-    // ✅ Respond to client early
-    const response = NextResponse.json({ message: `Login link is being sent to ${value}` });
+    // ✅ Trigger email/SMS send without waiting for it
+    if (method === 'email') {
+      const msg = {
+        to: value,
+        from: process.env.SENDGRID_VERIFIED_SENDER!,
+        subject: 'Your Passwordless Login Link',
+        text: `Login here: ${link}`,
+        html: `<p>Click to login: <a href="${link}">${link}</a></p>`,
+      };
+      sgMail.send(msg).then(() => {
+        console.log('✅ Email sent');
+      }).catch((err) => {
+        console.error('❌ Email send failed:', err);
+      });
+    } else if (method === 'phone') {
+      twilioClient.messages.create({
+        body: `Your passwordless login link: ${link}`,
+        from: process.env.TWILIO_PHONE_NUMBER!,
+        to: value,
+      }).then(() => {
+        console.log('✅ SMS sent');
+      }).catch((err) => {
+        console.error('❌ SMS send failed:', err);
+      });
+    }
 
-    // 🧵 Send email/SMS in the background
-    setTimeout(async () => {
-      try {
-        if (method === 'email') {
-          const msg = {
-            to: value,
-            from: process.env.SENDGRID_VERIFIED_SENDER!,
-            subject: 'Your Passwordless Login Link',
-            text: `Login here: ${link}`,
-            html: `<p>Click to login: <a href="${link}">${link}</a></p>`,
-          };
-          await sgMail.send(msg);
-          console.log('✅ Email sent');
-        } else if (method === 'phone') {
-          await twilioClient.messages.create({
-            body: `Your passwordless login link: ${link}`,
-            from: process.env.TWILIO_PHONE_NUMBER!,
-            to: value,
-          });
-          console.log('✅ SMS sent');
-        }
-      } catch (sendError) {
-        console.error('❌ Failed to send message:', sendError);
-      }
-    }, 0);
+    // ✅ Respond immediately, while email/SMS is being sent
+    return NextResponse.json({ message: `Login link is being sent to ${value}` });
 
-    return response;
   } catch (err) {
     console.error('❌ Unexpected error:', err);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
